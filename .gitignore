@@ -52,6 +52,14 @@ usage_statistics_webtalk.html
 webtalk.log
 webtalk_pn.xml
 
+# tmp files
+.vscode/*
+.metals/*
+build/*
+out/*
+
+
+
 # generated folders
 iseconfig/
 xlnx_auto_0_xdb/
@@ -338,4 +346,3 @@ project/plugins/project/
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
-

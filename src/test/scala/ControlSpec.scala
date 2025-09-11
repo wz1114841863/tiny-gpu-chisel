@@ -9,7 +9,7 @@ import org.scalatest.matchers.must.Matchers
 
 import statecode.ControlState
 
-class controller_model(
+class ControllerModel(
     AddrBits: Int = 8,
     DataBits: Int = 16,
     NumConsumers: Int = 4,
@@ -113,7 +113,7 @@ class ControllerSpec extends AnyFreeSpec with Matchers {
 
             var cnt = 0
             val rng = new scala.util.Random(0)
-            val controller_model = new controller_model(AddrBits, DataBits, NumConsumers, NumChannels)
+            val controller_model = new ControllerModel(AddrBits, DataBits, NumConsumers, NumChannels)
             while (cnt < 1000) {
                 val consumer_read_valid = Array.fill(NumConsumers)(rng.nextBoolean())
                 val consumer_read_addr = Array.fill(NumConsumers)(rng.nextInt(AddrBits))

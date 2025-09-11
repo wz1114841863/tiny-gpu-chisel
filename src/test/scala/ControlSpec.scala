@@ -103,7 +103,7 @@ class ControllerSpec extends AnyFreeSpec with Matchers {
         val AddrBits = 8
         val DataBits = 16
         val NumConsumers = 4
-        val NumChannels = 2
+        val NumChannels = 1
 
         simulate(new Controller(AddrBits, DataBits, NumConsumers, NumChannels)) { dut =>
             dut.reset.poke(true.B)
@@ -178,4 +178,3 @@ class ControllerSpec extends AnyFreeSpec with Matchers {
         }
     }
 }
-

@@ -62,9 +62,9 @@ class Controller(
     // 每个通道的状态机状态
     val controller_state = RegInit(VecInit(Seq.fill(NumChannels)(ControlState.IDLE)))
     // 记录每个消费者当前是否被某个通道服务
-    val channel_serving_consumer = Wire(Vec(Seq.fill(NumConsumers)(false.B)))
+    val channel_serving_consumer = RegInit(VecInit(Seq.fill(NumConsumers)(false.B)))
 
-    while (!reset.asBool) {
+    when(!reset.asBool) {
         for (i <- 0 until NumChannels) {
             switch(controller_state(i)) {
                 is(ControlState.IDLE) {
@@ -76,7 +76,7 @@ class Controller(
                     // 用VecInit是因为 write_signals 是可选接口(Option)
                     val write_signals = VecInit(Seq.fill(NumConsumers)(false.B))
                     for (j <- 0 until NumConsumers) {
-                        read_signals(j) = io.consumer_read_addr_receiver(j).valid && !channel_serving_consumer(j)
+                        read_signals(j) := io.consumer_read_addr_receiver(j).valid && !channel_serving_consumer(j)
                         io.consumer_write_receiver.map(write_receiver =>
                             write_signals(j) := write_receiver(j).valid && !channel_serving_consumer(j)
                         )
@@ -90,14 +90,18 @@ class Controller(
                     val first_read_idx = PriorityEncoder(read_signals)
                     val first_write_idx = PriorityEncoder(write_signals)
 
-                    when(read_signals.asUint > 0.U && first_read_idx <= first_write_idx) {
+                    when(read_signals.asUInt > 0.U && first_read_idx <= first_write_idx) {
                         // 只要有读请求,并且读请求的序号 ≤ 写请求的序号,
                         // 就先处理读. 序号相同时, 读优先
                         val read_address = io.consumer_read_addr_receiver(first_read_idx).bits
-                        channel_serving_consumer(first_read_idx) := true.current_consumer(i) := first_read_idx.U
+                        channel_serving_consumer(first_read_idx) := true.B
+                        current_consumer(i) := first_read_idx
+
+                        mem_read_valid(i) := true.B
+                        mem_read_address(i) := read_address
 
                         controller_state(i) := ControlState.READ_WAITING
-                    }.elsewhen(write_signals.asUint > 0.U) {
+                    }.elsewhen(write_signals.asUInt > 0.U) {
                         val write_address =
                             // 因为写接口是 Option[Vec[...]],必须 .map(...).getOrElse(...) 安全取值.
                             io.consumer_write_receiver.map(_.apply(first_write_idx).bits.address).getOrElse(0.U)

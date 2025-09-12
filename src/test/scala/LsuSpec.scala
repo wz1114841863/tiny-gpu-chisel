@@ -185,7 +185,6 @@ class LsuSpec extends AnyFreeSpec with Matchers {
 
                 cnt += 1
             }
-
         }
     }
 }

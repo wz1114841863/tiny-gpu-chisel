@@ -51,6 +51,7 @@ class GpuModel(
         )
     )
 
+    // Last cycle datas
     // Device Control Register
     var drc_thread_count = 0
 
@@ -82,7 +83,7 @@ class GpuModel(
         dispatcher_core_thread_count = model.core_thread_count
     }
 
-    // Cores outputs
+    // Cores outputs 8/8
     var cores_done = Array.fill(NumCores)(false)
     var cores_program_mem_read_address_valid = Array.fill(NumCores)(false)
     var cores_program_mem_read_address_bits = Array.fill(NumCores)(0)
@@ -91,7 +92,6 @@ class GpuModel(
     var cores_data_mem_write_address_valid = Array.fill(NumCores)(Array.fill(ThreadsPerBlock)(false))
     var cores_data_mem_write_address_bits = Array.fill(NumCores)(Array.fill(ThreadsPerBlock)(0))
     var cores_data_mem_write_data_bits = Array.fill(NumCores)(Array.fill(ThreadsPerBlock)(0))
-
     def save_core(idx: Int, model: core.CoreModel) = {
         cores_done(idx) = model.done
         cores_program_mem_read_address_valid(idx) = model.program_mem_read_address_valid
@@ -103,7 +103,7 @@ class GpuModel(
         cores_data_mem_write_data_bits(idx) = model.data_mem_write_data_bits
     }
 
-    // GPU outputs
+    // GPU outputs 8/8
     var gpu_done = false
     var gpu_program_mem_read_valid = Array.fill(ProgramMemNumChannels)(false)
     var gpu_program_mem_read_bits = Array.fill(ProgramMemNumChannels)(0)
@@ -159,6 +159,7 @@ class GpuModel(
 
         // Update each core
         for (i <- 0 until NumCores) {
+            // Update core model
             coreModels(i).update(
                 start = dispatcher_core_start(i),
                 block_id = dispatcher_core_block_id(i),
@@ -186,7 +187,6 @@ class GpuModel(
         if (device_control_write_enable) {
             drc_thread_count = device_control_data
         }
-
         save_program_memory_controller(programMemoryController)
         save_data_memory_controller(dataMemoryController)
         save_dispatcher(dispatchModel)
@@ -194,107 +194,110 @@ class GpuModel(
 }
 
 class GpuSpec extends AnyFreeSpec with Matchers {
-    "Test Gpu" in {
-        val DataMemAddrBits = 8
-        val DataMemDataBits = 8
-        val DataMemNumChannels = 4
-        val ProgramMemAddrBits = 8
-        val ProgramMemDataBits = 16
-        val ProgramMemNumChannels = 1
-        val NumCores = 2
-        val ThreadsPerBlock = 4
+    "A cycle based GPU tester" - {
+        "should match model behavior with random inputs" in {
+            val DataMemAddrBits = 8
+            val DataMemDataBits = 8
+            val DataMemNumChannels = 4
+            val ProgramMemAddrBits = 8
+            val ProgramMemDataBits = 16
+            val ProgramMemNumChannels = 1
+            val NumCores = 2
+            val ThreadsPerBlock = 4
 
-        simulate(
-            new Gpu(
-                DataMemAddrBits,
-                DataMemDataBits,
-                DataMemNumChannels,
-                ProgramMemAddrBits,
-                ProgramMemDataBits,
-                ProgramMemNumChannels,
-                NumCores,
-                ThreadsPerBlock
-            )
-        ) { dut =>
-            dut.reset.poke(true.B)
-            dut.clock.step()
-            dut.reset.poke(false.B)
-            dut.clock.step()
-
-            var cnt = 0
-            val rng = new scala.util.Random(42)
-            val gpuModel = new GpuModel(
-                DataMemAddrBits,
-                DataMemDataBits,
-                DataMemNumChannels,
-                ProgramMemAddrBits,
-                ProgramMemDataBits,
-                ProgramMemNumChannels,
-                NumCores,
-                ThreadsPerBlock
-            )
-
-            while (cnt < 10000) {
-                // Generate random inputs
-                val device_control_data = rng.nextInt(256)
-
-                val program_mem_read_ready = Array.fill(ProgramMemNumChannels)(rng.nextBoolean())
-                val program_mem_read_data =
-                    Array.fill(ProgramMemNumChannels)(rng.nextInt(1 << ProgramMemDataBits))
-
-                val data_mem_read_ready = Array.fill(DataMemNumChannels)(rng.nextBoolean())
-                val data_mem_read_data = Array.fill(DataMemNumChannels)(rng.nextInt(1 << DataMemDataBits))
-                val data_mem_write_ready = Array.fill(DataMemNumChannels)(rng.nextBoolean())
-
-                // Apply inputs to DUT
-                dut.io.start.poke(true.B)
-                dut.io.device_control_write_enable.poke(true.B)
-                dut.io.device_control_data.poke(device_control_data.U)
-
-                for (i <- 0 until ProgramMemNumChannels) {
-                    dut.io.program_mem_read_sender(i).ready.poke(program_mem_read_ready(i).B)
-                    dut.io.program_mem_read_data(i).poke(program_mem_read_data(i).U)
-                }
-
-                for (i <- 0 until DataMemNumChannels) {
-                    dut.io.data_mem_read_sender(i).ready.poke(data_mem_read_ready(i).B)
-                    dut.io.data_mem_read_data(i).poke(data_mem_read_data(i).U)
-                    dut.io.data_mem_write_sender(i).ready.poke(data_mem_write_ready(i).B)
-                }
-
+            simulate(
+                new Gpu(
+                    DataMemAddrBits,
+                    DataMemDataBits,
+                    DataMemNumChannels,
+                    ProgramMemAddrBits,
+                    ProgramMemDataBits,
+                    ProgramMemNumChannels,
+                    NumCores,
+                    ThreadsPerBlock
+                )
+            ) { dut =>
+                // Reset the DUT
+                dut.reset.poke(true.B)
+                dut.clock.step()
+                dut.reset.poke(false.B)
                 dut.clock.step()
 
-                // Update model with same inputs
-                gpuModel.update(
-                    start = true,
-                    device_control_write_enable = true,
-                    device_control_data = device_control_data,
-                    program_mem_read_ready = program_mem_read_ready,
-                    program_mem_read_data = program_mem_read_data,
-                    data_mem_read_ready = data_mem_read_ready,
-                    data_mem_read_data = data_mem_read_data,
-                    data_mem_write_ready = data_mem_write_ready
+                var cnt = 0
+                val rng = new scala.util.Random(42)
+                val gpuModel = new GpuModel(
+                    DataMemAddrBits,
+                    DataMemDataBits,
+                    DataMemNumChannels,
+                    ProgramMemAddrBits,
+                    ProgramMemDataBits,
+                    ProgramMemNumChannels,
+                    NumCores,
+                    ThreadsPerBlock
                 )
 
-                // Verify outputs
-                dut.io.done.expect(gpuModel.gpu_done.B)
+                while (cnt < 10000) {
+                    // Generate random inputs
+                    val device_control_data = rng.nextInt(256)
 
-                // Verify program memory interface
-                for (i <- 0 until ProgramMemNumChannels) {
-                    dut.io.program_mem_read_sender(i).valid.expect(gpuModel.gpu_program_mem_read_valid(i).B)
-                    dut.io.program_mem_read_sender(i).bits.expect(gpuModel.gpu_program_mem_read_bits(i).U)
+                    val program_mem_read_ready = Array.fill(ProgramMemNumChannels)(rng.nextBoolean())
+                    val program_mem_read_data =
+                        Array.fill(ProgramMemNumChannels)(rng.nextInt(1 << ProgramMemDataBits))
+
+                    val data_mem_read_ready = Array.fill(DataMemNumChannels)(rng.nextBoolean())
+                    val data_mem_read_data = Array.fill(DataMemNumChannels)(rng.nextInt(1 << DataMemDataBits))
+                    val data_mem_write_ready = Array.fill(DataMemNumChannels)(rng.nextBoolean())
+
+                    // Apply inputs to DUT
+                    dut.io.start.poke(true.B)
+                    dut.io.device_control_write_enable.poke(true.B)
+                    dut.io.device_control_data.poke(device_control_data.U)
+
+                    for (i <- 0 until ProgramMemNumChannels) {
+                        dut.io.program_mem_read_sender(i).ready.poke(program_mem_read_ready(i).B)
+                        dut.io.program_mem_read_data(i).poke(program_mem_read_data(i).U)
+                    }
+
+                    for (i <- 0 until DataMemNumChannels) {
+                        dut.io.data_mem_read_sender(i).ready.poke(data_mem_read_ready(i).B)
+                        dut.io.data_mem_read_data(i).poke(data_mem_read_data(i).U)
+                        dut.io.data_mem_write_sender(i).ready.poke(data_mem_write_ready(i).B)
+                    }
+
+                    dut.clock.step()
+
+                    // Update model with same inputs
+                    gpuModel.update(
+                        start = true,
+                        device_control_write_enable = true,
+                        device_control_data = device_control_data,
+                        program_mem_read_ready = program_mem_read_ready,
+                        program_mem_read_data = program_mem_read_data,
+                        data_mem_read_ready = data_mem_read_ready,
+                        data_mem_read_data = data_mem_read_data,
+                        data_mem_write_ready = data_mem_write_ready
+                    )
+
+                    // Verify outputs
+                    dut.io.done.expect(gpuModel.gpu_done.B)
+
+                    // Verify program memory interface
+                    for (i <- 0 until ProgramMemNumChannels) {
+                        dut.io.program_mem_read_sender(i).valid.expect(gpuModel.gpu_program_mem_read_valid(i).B)
+                        dut.io.program_mem_read_sender(i).bits.expect(gpuModel.gpu_program_mem_read_bits(i).U)
+                    }
+
+                    // Verify data memory interface
+                    for (i <- 0 until DataMemNumChannels) {
+                        dut.io.data_mem_read_sender(i).valid.expect(gpuModel.gpu_data_mem_read_valid(i).B)
+                        dut.io.data_mem_read_sender(i).bits.expect(gpuModel.gpu_data_mem_read_bits(i).U)
+                        dut.io.data_mem_write_sender(i).valid.expect(gpuModel.gpu_data_mem_write_valid(i).B)
+                        dut.io.data_mem_write_sender(i).bits.address.expect(gpuModel.gpu_data_mem_write_address(i).U)
+                        dut.io.data_mem_write_sender(i).bits.data.expect(gpuModel.gpu_data_mem_write_data(i).U)
+                    }
+
+                    cnt += 1
                 }
-
-                // Verify data memory interface
-                for (i <- 0 until DataMemNumChannels) {
-                    dut.io.data_mem_read_sender(i).valid.expect(gpuModel.gpu_data_mem_read_valid(i).B)
-                    dut.io.data_mem_read_sender(i).bits.expect(gpuModel.gpu_data_mem_read_bits(i).U)
-                    dut.io.data_mem_write_sender(i).valid.expect(gpuModel.gpu_data_mem_write_valid(i).B)
-                    dut.io.data_mem_write_sender(i).bits.address.expect(gpuModel.gpu_data_mem_write_address(i).U)
-                    dut.io.data_mem_write_sender(i).bits.data.expect(gpuModel.gpu_data_mem_write_data(i).U)
-                }
-
-                cnt += 1
             }
         }
     }

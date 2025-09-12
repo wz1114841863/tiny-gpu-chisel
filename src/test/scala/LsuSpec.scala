@@ -10,7 +10,7 @@ import org.scalatest.matchers.must.Matchers
 import statecode.CoreState
 import statecode.LSUState
 
-class lsu_model {
+class LsuModel {
     var lsu_state: LSUState.Type = LSUState.IDLE
     var output_data = 0
     var read_valid = false
@@ -99,7 +99,7 @@ class LsuSpec extends AnyFreeSpec with Matchers {
 
             var cnt = 0
             val rng = new scala.util.Random(42)
-            val lsu_model = new lsu_model()
+            val lsu_model = new LsuModel()
 
             while (cnt < 1000) {
                 val enable = true
@@ -118,8 +118,8 @@ class LsuSpec extends AnyFreeSpec with Matchers {
 
                 dut.io.enable.poke(enable.B)
                 dut.io.core_state.poke(core_state)
-                dut.io.mem_rw_enable.mem_read_enable.poke(read_enable.B)
-                dut.io.mem_rw_enable.mem_write_enable.poke(write_enable.B)
+                dut.io.mem_rw_enable.read_enable.poke(read_enable.B)
+                dut.io.mem_rw_enable.write_enable.poke(write_enable.B)
                 dut.io.reg_in.rs.poke(rs.U)
                 dut.io.reg_in.rt.poke(rt.U)
                 dut.io.mem_read_data.poke(mem_read_data.U)

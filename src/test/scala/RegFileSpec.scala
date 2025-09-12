@@ -76,9 +76,10 @@ class RegModel {
                     }
                     registers(rd) = write_data
                 }
-            } else {
-                println("RegModel: Unknown core_state")
-            }
+            } // else {
+            //     // 测试Core 模块时, CoreState可能会有其他值
+            //     println("RegModel: Unknown core_state")
+            // }
         }
     }
 
@@ -219,9 +220,7 @@ class RegFileSpec extends AnyFreeSpec with Matchers {
                 //     dumpRegFile()
                 // }
 
-                if (
-                    (core_state == CoreState.REQUEST) && (hw_rs != ref_rs || hw_rt != ref_rt)
-                ) {
+                if ((core_state == CoreState.REQUEST) && (hw_rs != ref_rs || hw_rt != ref_rt)) {
                     val s = reg_model.lastInputSnap // 参考模型上一拍输入
                     println("-------- FAIL --------")
                     println(

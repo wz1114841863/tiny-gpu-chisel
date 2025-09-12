@@ -12,8 +12,8 @@ class MemLoadStoreUnit extends Module {
 
         // Decoder outputs
         val mem_rw_enable = new Bundle {
-            val mem_read_enable = Input(Bool())
-            val mem_write_enable = Input(Bool())
+            val read_enable = Input(Bool())
+            val write_enable = Input(Bool())
         }
 
         val reg_in = new Bundle {
@@ -43,7 +43,7 @@ class MemLoadStoreUnit extends Module {
 
     when(io.enable) {
         // if memory read enable is triggered(LDR instruction)
-        when(io.mem_rw_enable.mem_read_enable) {
+        when(io.mem_rw_enable.read_enable) {
             switch(lsu_state) {
                 is(LSUState.IDLE) {
                     when(io.core_state === CoreState.REQUEST) {
@@ -71,7 +71,7 @@ class MemLoadStoreUnit extends Module {
         }
 
         // if memory write enable is triggered(STR instruction)
-        when(io.mem_rw_enable.mem_write_enable) {
+        when(io.mem_rw_enable.write_enable) {
             switch(lsu_state) {
                 is(LSUState.IDLE) {
                     when(io.core_state === CoreState.REQUEST) {

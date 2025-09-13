@@ -43,6 +43,9 @@ sbt "Test / runMain gpu.GpuVMAddTest"
 sbt "Test / runMain gpu.GpuVMMulTest"
 sbt "Test / runMain gpu.MachineCodeEmitterTest"
 
+# 使用脚本
+ ./assembler.sh ./asm_files/matadd.asm
+
 # 清理SBT缓存
 sbt clean
 
